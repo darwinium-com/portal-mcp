@@ -1,0 +1,78 @@
+{
+  "name": "@darwinium/portal-mcp",
+  "version": "0.0.2",
+  "description": "Darwinium Portal MCP — local stdio MCP server bridging Claude Desktop / Claude Code to the active *.darwinium.com tab via a Chrome MV3 extension.",
+  "author": "Darwinium",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/darwinium-com/portal-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/darwinium-com/portal-mcp.git",
+    "directory": "portal-mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/darwinium-com/portal-mcp/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "@darwinium:registry": "https://registry.npmjs.org/",
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "darwinium",
+    "portal",
+    "fraud",
+    "claude"
+  ],
+  "type": "module",
+  "main": "dist/bin/portal-mcp.js",
+  "bin": {
+    "portal-mcp": "dist/bin/portal-mcp.js"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "extension-bundle",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "bundle-extension": "node scripts/bundle-extension.mjs",
+    "build": "rimraf dist && node scripts/gen-version.mjs && node scripts/vendor-instructions.mjs && tsdown && node -e \"require('fs').chmodSync('dist/bin/portal-mcp.js', 0o755)\"",
+    "package:macos": "node scripts/build-mcpb.mjs --runtime=bun --target=darwin-arm64 --handover",
+    "smoke-test": "node --experimental-strip-types scripts/smoke-test.ts",
+    "smoke-test:eaddrinuse": "node --experimental-strip-types scripts/smoke-test-eaddrinuse.ts",
+    "test": "npm run build && npm run smoke-test",
+    "lint": "eslint src/",
+    "vendor": "node scripts/vendor-instructions.mjs",
+    "vendor:check": "node scripts/vendor-instructions.mjs --check",
+    "package:mcpb": "node scripts/build-mcpb.mjs",
+    "sync:public": "node scripts/sync-public-repo.mjs",
+    "gen-version": "node scripts/gen-version.mjs",
+    "gen-version:check": "node scripts/gen-version.mjs --check"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "adm-zip": "^0.6.0",
+    "commander": "^13.1.0",
+    "env-paths": "^4.0.0",
+    "ws": "^8.20.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.5",
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.18.0",
+    "eslint": "^10.8.1",
+    "rimraf": "^6.1.3",
+    "tsdown": "^0.21.0",
+    "typescript": "^5.7.3"
+  }
+}

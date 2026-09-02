@@ -1,0 +1,17 @@
+{
+  "name": "darwinium",
+  "version": "0.0.2",
+  "description": "Darwinium plugins for Claude Code.",
+  "repository": "https://github.com/darwinium-com/portal-mcp",
+  "owner": {
+    "name": "Darwinium",
+    "email": "support@darwinium.com"
+  },
+  "plugins": [
+    {
+      "name": "portal-mcp",
+      "source": "./",
+      "description": "Connect Claude Code to the Darwinium portal tab open in your browser — run queries, inspect journeys, and edit policies in plain language."
+    }
+  ]
+}

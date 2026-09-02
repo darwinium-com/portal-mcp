@@ -1,0 +1,13 @@
+// VENDORED from packages/darwinium-instructions/src/labelList.ts
+// DO NOT EDIT BY HAND. Regenerate with `node scripts/vendor-instructions.mjs`
+// after changing the source. `yarn build` rewrites this file and
+// `--check` fails CI on drift.
+
+// Static label list, extracted from slack-nlp's system prompt. Future updates
+// flow through this file.
+//
+// This is the entire `* there's a function called checkLabel ...` prompt entry
+// — including the bracketed JSON-like string of possible label names — kept as
+// one template literal so the prompt content stays byte-identical.
+
+export const STATIC_LABEL_LIST: string = `* there's a function called checkLabel to check for labels on Darwinium. it takes the form \`checkLabel(\"label name\", [attributes, relevant, here], [contexts, go, here])\`  . For now, make contexts irrelevant. Here is some possible label names:\n\n\`\`\`'[\"second_party_fraud\",\"speed_tester\",\"watch_list\",\"open_proxy\",\"mail_attack\",\"purchase_scam\",\"spam_outbound\",\"advance_fee_scam\",\"monitor_list\",\"open_socks_proxy\",\"challenged\",\"click_fraud\",\"fake_review\",\"spam_inbound\",\"self_excluded\",\"malware\",\"incorrect_format\",\"bonus_abuse\",\"challenge_timeout\",\"operator_review_passed\",\"site_monitor\",\"anon_vpn_service\",\"romance_scam\",\"additional_payload\",\"chargebacks_payment_fraud\",\"claims_fraud\",\"identity_theft\",\"onion_router\",\"voip_fraud\",\"challenge_passed\",\"feed_fetcher\",\"schema_validated\",\"false_positive\",\"fake_listing\",\"data_breach\",\"block_list\",\"impersonation_scam\",\"identity_fraud_stolen_credentials\",\"link_checker\",\"marketing_crawler\",\"cybercrime\",\"phishing_content\",\"uncategorized_crawler\",\"scripted_attack_fraud\",\"ghost_broker_fraud\",\"bitcoin_node\",\"problem_gambler\",\"account_takeover_social_engineering\",\"web_attack\",\"login_failed\",\"account_lock\",\"screenshot_creator\",\"schema_violation\",\"self_excluded_linked_identifier\",\"cgi_proxy\",\"fake_crawler\",\"click_and_collect_fraud\",\"false_negative\",\"marked_for_operator_review\",\"first_party_fraud\",\"bot_abuse\",\"vip_list\",\"web_scraper\",\"trusted_identity\",\"login_passed\",\"promo_abuse\",\"sim_swap_fraud\",\"tor_exit_node\",\"ssh_attack\",\"other_app_scam\",\"challenge_failed\",\"account_takeover_change_of_details\",\"redirect_scam\",\"search_engine_crawler\",\"tools_crawler\",\"virus_scanner_crawler\",\"allow_list\",\"anon_proxy\",\"reseller_abuse\",\"money_mule_money_laundering\",\"synthetic_identity_fraud\",\"investment_scam\",\"cookie_copy\",\"account_takeover\",\"toxic_content_abuse\",\"collusive_payment_fraud\",\"benefit_theft_fraud\",\"subscription_fraud\",\"vulnerability_scanner\",\"legacy_connection\",\"legacy_device\"]'\`\`\``;

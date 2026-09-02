@@ -1,0 +1,65 @@
+# Darwinium Portal MCP
+
+Connect Claude — and other MCP clients — to the Darwinium portal tab already open in your
+browser. Run queries, inspect journeys, read signals and features, and edit policies in
+plain language.
+
+There is no Darwinium API key and no backend connection: your existing browser session does
+all the data access, and the server only ever sees what your own portal tab already shows.
+
+**Documentation: https://darwinium.com/portal-mcp**
+
+## Install
+
+### Claude Desktop
+
+Download the `.mcpb` bundle for your platform from
+[Releases](https://github.com/darwinium-com/portal-mcp/releases) and double-click it. No
+Node.js required.
+
+Or, with Node.js 20+:
+
+```bash
+npx -y @darwinium/portal-mcp install
+```
+
+### Claude Code
+
+```bash
+claude mcp add darwinium-portal-mcp -- npx -y @darwinium/portal-mcp serve
+```
+
+Or as a plugin:
+
+```
+/plugin marketplace add darwinium-com/portal-mcp
+/plugin install portal-mcp@darwinium
+```
+
+### Chrome extension
+
+Both halves are required. Install from the
+[Chrome Web Store](https://chromewebstore.google.com/detail/darwinium-portal-mcp), then pair
+once — see [the setup guide](https://darwinium.com/portal-mcp/chrome-extension).
+
+## Repository layout
+
+| Path | What |
+|---|---|
+| `portal-mcp/` | The MCP server, published to npm as [`@darwinium/portal-mcp`](https://www.npmjs.com/package/@darwinium/portal-mcp). |
+| `portal-extension/` | The Chrome MV3 extension. |
+| `docs/` | Source for the documentation site. |
+| `.claude-plugin/` | Claude Code marketplace and plugin manifests. |
+
+This repository is generated from Darwinium's internal monorepo, which remains the source of
+truth. Please raise issues here; pull requests may need to be re-applied upstream.
+
+## Privacy
+
+Darwinium collects nothing through this software — no analytics, no telemetry, no backend.
+Note that portal data you ask an assistant about is sent by that assistant to its own AI
+provider. Full policy: https://www.darwinium.com/privacy-policy
+
+## License
+
+Apache-2.0 — see [LICENSE](./LICENSE).

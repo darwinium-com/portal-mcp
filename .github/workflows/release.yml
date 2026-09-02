@@ -1,0 +1,99 @@
+# Release workflow for the PUBLIC repo (darwinium-com/portal-mcp).
+#
+# Lives in the monorepo so it versions with the code; scripts/sync-public-repo.mjs
+# copies it to the public checkout's .github/workflows/.
+#
+# Publishing is tag-driven. Tag v1.2.3 must match portal-mcp/package.json's
+# version, which is asserted below — a mismatch is the single easiest way to
+# publish the wrong artifact.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  # Required for npm provenance (--provenance mints a signed attestation
+  # linking the tarball to this workflow run).
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: portal-mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Assert tag matches package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "Tag v$TAG does not match portal-mcp/package.json version $PKG" >&2
+            exit 1
+          fi
+
+      - run: npm install --no-audit --no-fund
+
+      # Generated files are committed; fail if either has drifted from source
+      # rather than silently publishing a stale snapshot.
+      - run: npm run gen-version:check
+      - run: npm run vendor:check
+
+      # Rebuild the extension and re-bundle its zip rather than trusting the
+      # copy committed to extension-bundle/. That zip is what `portal-mcp
+      # install` extracts for the Load Unpacked path, so a stale one hands
+      # users an old extension against a new binary. bundle-extension.mjs
+      # hard-fails if the two package versions disagree.
+      - name: Build the Chrome extension
+        working-directory: portal-extension
+        run: npm install --no-audit --no-fund && npm run build && npx wxt zip
+
+      - run: npm run bundle-extension
+
+      - run: npm run build
+      - run: npm run lint
+      - run: npm run smoke-test
+
+      - name: Assert the tarball is publishable and installable
+        # The published manifest must not carry `packageManager` (npm refuses to
+        # install without Corepack) or `postinstall` (it would run `tsdown`
+        # against devDependencies a consumer never installs). Both are stripped
+        # by sync-public-repo.mjs; this is the tripwire if that ever regresses.
+        #
+        # publishConfig must pin BOTH the scoped and default registry to npmjs.
+        # Darwinium machines map `@darwinium:registry` to an internal Artifactory
+        # in ~/.npmrc, and a scoped mapping outranks `publishConfig.registry` on
+        # its own — so without the scoped key here, a publish silently pushes
+        # this public package to the private registry and reports success.
+        run: |
+          node -e "
+            const p = require('./package.json');
+            if (p.packageManager) throw new Error('packageManager must be stripped before publish');
+            if (p.scripts.postinstall) throw new Error('postinstall must be stripped before publish');
+            if (typeof p.bin !== 'object') throw new Error('bin must be the explicit object form; yarn rewrites it to a string');
+            const NPMJS = 'https://registry.npmjs.org/';
+            const pc = p.publishConfig || {};
+            if (pc.registry !== NPMJS) throw new Error('publishConfig.registry must be ' + NPMJS);
+            if (pc['@darwinium:registry'] !== NPMJS) throw new Error('publishConfig[\"@darwinium:registry\"] must be ' + NPMJS);
+            if (pc.access !== 'public') throw new Error('publishConfig.access must be public');
+            const bad = Object.entries({...p.dependencies, ...p.devDependencies})
+              .filter(([, v]) => String(v).startsWith('workspace:'));
+            if (bad.length) throw new Error('workspace ranges cannot publish: ' + bad.map(([k]) => k).join(', '));
+          "
+
+      - name: Publish to npm
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

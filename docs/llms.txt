@@ -1,0 +1,25 @@
+# Darwinium Portal MCP
+
+> A local MCP server plus Chrome extension that connects Claude (and other MCP clients) to
+> the Darwinium portal tab already open in the user's browser. It makes no backend
+> connection: the user's existing authenticated browser session performs all data access,
+> and the server only ever sees what the portal tab already shows. Exposes three tools over
+> a dynamic, per-page command surface.
+
+## Docs
+
+- [Overview](https://darwinium.com/portal-mcp): what it is, architecture, requirements.
+- [Claude Desktop](https://darwinium.com/portal-mcp/claude-desktop): `.mcpb` bundle and npx install, pairing.
+- [Claude Code](https://darwinium.com/portal-mcp/claude-code): plugin and `claude mcp add` install.
+- [Chrome extension](https://darwinium.com/portal-mcp/chrome-extension): install, pairing, permissions.
+- [Tools](https://darwinium.com/portal-mcp/tools): `get_page_commands`, `run_page_command`, `get_context`.
+- [Other MCP clients](https://darwinium.com/portal-mcp/other-clients): ChatGPT desktop, Codex CLI, generic stdio.
+- [Troubleshooting](https://darwinium.com/portal-mcp/troubleshooting): the nine `doctor` checks and common failures.
+- [Privacy Policy](https://www.darwinium.com/privacy-policy): what is collected, stored, and where data goes.
+
+## Notes
+
+- Requires Google Chrome 116+ and a logged-in `*.darwinium.com` or `*.int.darwinium.io` tab.
+- Node.js 20+ is needed only for the npx path; the `.mcpb` bundle is a self-contained binary.
+- The server binds `127.0.0.1:9224`; only one MCP host can hold the bridge at a time.
+- Source: https://github.com/darwinium-com/portal-mcp

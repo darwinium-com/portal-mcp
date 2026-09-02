@@ -1,0 +1,35 @@
+{
+  "name": "@darwinium/portal-extension",
+  "version": "0.0.2",
+  "private": true,
+  "packageManager": "yarn@3.6.1",
+  "description": "Darwinium Portal MCP — Chrome MV3 extension. Two manifest content scripts at document_start (ISOLATED + MAIN) bridging the *.darwinium.com tab to the local portal-mcp binary via CustomEvents + WebSocket.",
+  "author": "Darwinium",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf .output",
+    "dev": "wxt",
+    "build": "wxt build && node scripts/check-manifest.mjs --prod",
+    "postinstall": "wxt prepare && npm run build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "compile": "wxt prepare && tsc --noEmit",
+    "check-manifest": "node scripts/check-manifest.mjs",
+    "check-manifest:prod": "node scripts/check-manifest.mjs --prod"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "latest",
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "rimraf": "^6.1.3",
+    "typescript": "^5.7.3",
+    "vite": "^6.3.5",
+    "wxt": "^0.21.4"
+  }
+}
