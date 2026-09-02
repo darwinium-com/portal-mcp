@@ -26,11 +26,11 @@ jobs:
       run:
         working-directory: portal-mcp
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Assert tag matches package version
@@ -43,7 +43,7 @@ jobs:
             exit 1
           fi
 
-      - run: npm install --no-audit --no-fund
+      - run: npm install --no-audit --no-fund --legacy-peer-deps
 
       # Generated files are committed; fail if either has drifted from source
       # rather than silently publishing a stale snapshot.
@@ -57,7 +57,7 @@ jobs:
       # hard-fails if the two package versions disagree.
       - name: Build the Chrome extension
         working-directory: portal-extension
-        run: npm install --no-audit --no-fund && npm run build && npx wxt zip
+        run: npm install --no-audit --no-fund --legacy-peer-deps && npm run build && npx wxt zip
 
       - run: npm run bundle-extension
 
@@ -94,6 +94,16 @@ jobs:
 
       - name: Publish to npm
         if: startsWith(github.ref, 'refs/tags/v')
-        run: npm publish --provenance --access public
+        # Skip rather than fail when the version is already on the registry, so
+        # re-running a tag whose earlier run died after publishing (or which was
+        # published by hand) is idempotent instead of erroring EPUBLISHCONFLICT.
+        # Everything above still runs, so the build and assertions are exercised.
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@darwinium/portal-mcp@$VERSION" version >/dev/null 2>&1; then
+            echo "@darwinium/portal-mcp@$VERSION is already published — skipping publish."
+            exit 0
+          fi
+          npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
