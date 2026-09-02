@@ -53,8 +53,8 @@ does and does not protect.
 
 - **Google Chrome 116 or newer.** Other Chromium browsers are not officially supported.
 - **A logged-in Darwinium portal tab** — `*.darwinium.com` or `*.int.darwinium.io`.
-- **Node.js 20+** *only* for the `npx` install path. The `.mcpb` bundle ships a
-  self-contained binary and needs no runtime at all.
+- **Node.js 20+** *only* for the `npx` install path. The `.mcpb` bundle runs on the Node
+  runtime Claude Desktop ships, so it needs nothing installed.
 
 ## One host at a time
 

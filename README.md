@@ -13,9 +13,10 @@ all the data access, and the server only ever sees what your own portal tab alre
 
 ### Claude Desktop
 
-Download the `.mcpb` bundle for your platform from
-[Releases](https://github.com/darwinium-com/portal-mcp/releases) and double-click it. No
-Node.js required.
+Download the latest `.mcpb` from
+[Releases](https://github.com/darwinium-com/portal-mcp/releases/latest) and double-click it.
+One file covers macOS, Windows and Linux, and it runs on the Node runtime Claude Desktop
+ships — nothing to install.
 
 Or, with Node.js 20+:
 

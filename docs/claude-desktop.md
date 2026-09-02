@@ -10,12 +10,10 @@ no Node.js, no terminal, and no npm.
 
 ## Option A — the `.mcpb` bundle (recommended)
 
-1. Download the bundle for your platform:
-   - [macOS (Apple Silicon)](https://darwinium.com/portal-mcp/download/macos-arm64)
-   - [macOS (Intel)](https://darwinium.com/portal-mcp/download/macos-x64)
-   - [Windows (x64)](https://darwinium.com/portal-mcp/download/windows-x64)
-   - [Linux (x64)](https://darwinium.com/portal-mcp/download/linux-x64)
-2. Double-click the downloaded `.mcpb` file. Claude Desktop opens on its Extensions screen.
+1. Download the latest `.mcpb` from
+   [Releases](https://github.com/darwinium-com/portal-mcp/releases/latest). One file covers
+   macOS, Windows and Linux.
+2. Double-click it. Claude Desktop opens on its Extensions screen.
 3. Click **Install**.
 
 <Callout>
