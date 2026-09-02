@@ -1,6 +1,6 @@
 {
   "name": "@darwinium/portal-mcp",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Darwinium Portal MCP — local stdio MCP server bridging Claude Desktop / Claude Code to the active *.darwinium.com tab via a Chrome MV3 extension.",
   "author": "Darwinium",
   "license": "Apache-2.0",

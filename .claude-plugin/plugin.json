@@ -1,6 +1,6 @@
 {
   "name": "portal-mcp",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Connect Claude Code to the Darwinium portal tab open in your browser — run queries, inspect journeys, and edit policies in plain language.",
   "homepage": "https://www.darwinium.com",
   "mcpServers": {
@@ -8,7 +8,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@darwinium/portal-mcp@0.0.2",
+        "@darwinium/portal-mcp@0.0.3",
         "serve"
       ]
     }

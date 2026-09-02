@@ -1,6 +1,6 @@
 {
   "name": "@darwinium/portal-extension",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "packageManager": "yarn@3.6.1",
   "description": "Darwinium Portal MCP — Chrome MV3 extension. Two manifest content scripts at document_start (ISOLATED + MAIN) bridging the *.darwinium.com tab to the local portal-mcp binary via CustomEvents + WebSocket.",
