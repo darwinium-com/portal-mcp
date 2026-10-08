@@ -359,11 +359,7 @@ function buildManifest(target) {
 
 // -- support escape hatches ------------------------------------------------
 
-// Two of doctor's checks report a cross on a perfectly healthy machine while
-// Claude Desktop is running: it holds port 9224 itself, and the probe cannot
-// complete a handshake against its own live server. Rather than have a
-// non-technical user read that as a fault, the wrapper says which lines
-// actually matter.
+// Explain which checks depend on a running client and which are optional.
 const CHECK_SETUP = `#!/bin/bash
 # Prints a diagnostic report for the Darwinium Portal MCP. Send the output to
 # whoever gave you this folder.
@@ -387,12 +383,11 @@ else
   echo
   echo "  These should all have a tick:"
   echo "    binary.present, token.mode, token.parent.mode,"
-  echo "    config.desktop.entry"
+  echo "    config.desktop.entry, port.9224.bindable"
   echo
-  echo "  These normally show a cross while Claude Desktop is open,"
-  echo "  which is expected and not a fault:"
-  echo "    port.9224.bindable, extension.reachable,"
-  echo "    config.code.marketplace"
+  echo "  extension.reachable should have a tick while a client runs."
+  echo "  A running compatible bridge shares its port automatically."
+  echo "  Ignore config.code.marketplace if you do not use Claude Code."
 fi
 echo
 echo "Copy everything above and send it to whoever gave you this folder."
@@ -586,9 +581,9 @@ function renderGuide() {
 
 <details>
 <summary>The Darwinium tools vanish, or Claude says the server disconnected</summary>
-<p>Only one copy of this tool can run at a time. Quit any other Claude app you have open —
-   including Claude Code in a terminal — then quit Claude Desktop completely
-   (<strong>Claude &rarr; Quit</strong>, not just closing the window) and reopen it.</p>
+<p>Multiple clients can share the bridge. Update and restart older copies if the message
+   says sharing is unavailable. If the owning client just closed, allow the bridge and
+   extension to reconnect. Check the page state before retrying an interrupted command.</p>
 </details>
 
 <details>

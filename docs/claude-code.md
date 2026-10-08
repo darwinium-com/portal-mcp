@@ -52,6 +52,7 @@ In a session, the three tools appear as `get_page_commands`, `run_page_command` 
 
 ## Running alongside Claude Desktop
 
-Only one process can hold `127.0.0.1:9224`. If Claude Desktop is already running with the
-portal server, a Claude Code session will report that another copy owns the bridge rather
-than fighting it. Quit the other client and the session takes over within a few seconds.
+Claude Code and Claude Desktop can use the bridge concurrently. Later processes forward
+their calls through the first process automatically. If that owner exits, a survivor takes
+over and the extension reconnects. Both clients operate on the same connected tab, so
+navigation and edits are visible to both. Update and restart older bridge versions first.

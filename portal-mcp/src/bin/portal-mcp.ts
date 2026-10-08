@@ -18,7 +18,7 @@ program.name('portal-mcp').version(VERSION);
 program
   .command('serve', { isDefault: true })
   .description(
-    'Run as MCP stdio server (default subcommand). Binds WS server on 127.0.0.1:9224 for the extension bridge.',
+    'Run as MCP stdio server (default subcommand). Starts or shares the local extension bridge on 127.0.0.1:9224.',
   )
   .action(async () => {
     const { runServer } = await import('../server/index.js');

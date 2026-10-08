@@ -1,7 +1,8 @@
 import { WebSocketServer } from 'ws';
 import * as net from 'node:net';
 import { randomBytes } from 'node:crypto';
-import { killProcessOnPort, isPortInUse, wait } from './killProcessOnPort.js';
+import { createServer } from 'node:http';
+import { handleRelayRequest, RelayClient } from './relay.js';
 import { Bridge } from '../bridge/Context.js';
 import {
   VERSION_SUBPROTOCOL,
@@ -16,27 +17,15 @@ export const WS_HOST = '127.0.0.1';
 /** How long the peer probe waits for a WS upgrade before calling the holder foreign. */
 const PEER_PROBE_TIMEOUT_MS = 1500;
 
-/** Interval between takeover attempts while another instance owns the port. */
+/** Interval between health checks and owner elections. */
 const TAKEOVER_POLL_MS = 1000;
-
-/** Pending takeover timer, so shutdown can cancel it and let the process exit. */
-let takeoverTimer: NodeJS.Timeout | undefined;
-
-/** Cancel any pending takeover poll. Called on MCP transport close. */
-export function stopTakeoverPolling(): void {
-  if (takeoverTimer) {
-    clearTimeout(takeoverTimer);
-    takeoverTimer = undefined;
-  }
-}
+type BridgeService = { close: () => void };
 
 /**
- * Is the process holding WS_PORT a live portal-mcp that would accept our token?
+ * Does the process holding WS_PORT speak the extension WebSocket protocol?
  *
- * Distinguishes "a peer instance is legitimately serving the bridge" from "a
- * zombie or unrelated process is squatting on the port". Only the latter may be
- * killed — see createWsServer. A false negative here is destructive: it routes a
- * healthy peer into the kill branch.
+ * Used only by doctor for compatibility with older bridge versions. This tests
+ * the protocol shape, not token equality; it must never authorize a takeover.
  *
  * Speaks the upgrade by hand over a raw TCP socket rather than using the `ws`
  * client. Under `bun build --compile` the `ws` package's CLIENT is replaced by
@@ -101,112 +90,88 @@ export function probeBridgeHandshake(token: string): Promise<boolean> {
 }
 
 /**
- * Bind the WS server on 127.0.0.1:9224, or degrade gracefully if we cannot.
- *
- * Port ownership is a race between instances, so the outcome is one of three:
- *   - port free           → bind, this process owns the bridge.
- *   - held by a live peer → do NOT kill it. Serve MCP without the bridge and
- *                           poll to take over when the peer exits.
- *   - held by a zombie /
- *     foreign process     → killProcessOnPort + poll, then bind.
- *
- * Returns null in the degraded case; the process keeps serving MCP over stdio
- * either way, and never exits on a port conflict.
- *
- * Two-phase token-gated handshake:
- *   1. `handleProtocols` SHAPE GATE — accepts only offered subprotocol arrays that
- *      include `darwinium.v1` AND a `tok.*` entry; returns ONLY `'darwinium.v1'` in
- *      the response Sec-WebSocket-Protocol header (NEVER echoes the token —
- *      subprotocol headers are logged by browsers/proxies).
- *      Mismatched shape → HTTP 401 on upgrade (distinct from post-upgrade WS 4401).
- *   2. POST-UPGRADE TOKEN CHECK — `wss.on('connection')` starts a 1s timer for the
- *      `{type:'hello', token, version}` first frame. Mismatch / no-hello / malformed
- *      JSON → `ws.close(4401, ...)` produces a real WS close event.
- *
- * The bridge takes ownership of `ws` only after a successful hello check.
+ * The OS bind is the election: one process owns the extension listener; all
+ * others relay through it. No lock files, background daemon, or PID killing.
+ * A failed health check triggers another election, including after owner exit.
  */
-export async function createWsServer(bridge: Bridge, expectedToken: string): Promise<WebSocketServer | null> {
-  // Only reclaim the port from a holder that is NOT a live peer. Blindly
-  // kill -9-ing whatever holds 9224 makes two concurrent instances mutually
-  // fatal: each kills the other on startup, so an MCP host that restarts a
-  // server, or a second host on the same machine, produces a kill/respawn
-  // ping-pong that surfaces to the user as "Server disconnected".
-  if (await isPortInUse(WS_PORT)) {
-    if (await probeBridgeHandshake(expectedToken)) {
-      console.error(
-        'portal-mcp: another portal-mcp instance owns ws://127.0.0.1:9224 — ' +
-          'serving MCP without the browser bridge; will take over if it exits.',
-      );
-      bridge.setOwnsPort(false);
-      scheduleTakeover(bridge, expectedToken);
-      return null;
-    }
-    // Not a live peer: a zombie or an unrelated squatter. Reclaim it.
-    killProcessOnPort(WS_PORT);
-    for (let i = 0; i < 50; i++) {
-      if (!(await isPortInUse(WS_PORT))) break;
-      await wait(100);
-    }
-  }
+export async function createWsServer(bridge: Bridge, expectedToken: string, port = WS_PORT): Promise<BridgeService> {
+  let stopped = false;
+  let timer: NodeJS.Timeout | undefined;
+  let owner: BridgeService | undefined;
+  let relay: RelayClient | undefined;
+  let lastProblem: string | undefined;
+  bridge.setOwnsPort(false);
 
-  // `expectedToken` is read once by the caller (runServer) and shared with the
-  // initialize.instructions pairing block + the "not connected" tool responses,
-  // so the user can pair simply by asking Claude for the token.
-  const wss = await bindWsServer(bridge, expectedToken);
-  if (!wss) {
-    // Lost a bind race (two instances both saw the port free). Treat exactly
-    // like the peer case rather than exiting — MCP stays served either way.
-    console.error(
-      'portal-mcp: could not bind ws://127.0.0.1:9224 — serving MCP without the browser bridge; will retry.',
-    );
-    bridge.setOwnsPort(false);
-    scheduleTakeover(bridge, expectedToken);
-    return null;
-  }
-  bridge.setOwnsPort(true);
-  return wss;
+  const close = () => {
+    stopped = true;
+    clearTimeout(timer);
+    relay?.close();
+    owner?.close();
+  };
+
+  const schedule = () => {
+    // Keep a subordinate alive until its MCP host closes stdin.
+    if (!stopped)
+      timer = setTimeout(() => {
+        void check();
+      }, TAKEOVER_POLL_MS);
+  };
+
+  const check = async () => {
+    if (stopped) return;
+    try {
+      if (!relay) {
+        owner = await bindWsServer(bridge, expectedToken, port);
+        if (stopped) {
+          close();
+          return;
+        }
+        if (owner) {
+          bridge.setOwnsPort(true);
+          console.error(`portal-mcp: master listening on ws://${WS_HOST}:${port}`);
+          return;
+        }
+        relay = new RelayClient(port, expectedToken);
+      }
+      await relay.refresh();
+      if (stopped) {
+        close();
+        return;
+      }
+      const wasUnavailable = bridge.connectionProblem() !== undefined;
+      bridge.setRelay(relay);
+      if (wasUnavailable) console.error(`portal-mcp: subordinate sharing the bridge on ${WS_HOST}:${port}`);
+      lastProblem = undefined;
+    } catch (err) {
+      relay?.close();
+      relay = undefined;
+      const reason =
+        (err as Error).message === 'LOST_MID_CALL'
+          ? 'The local browser bridge is unavailable or restarting. Retrying automatically; if this persists, check which application holds the bridge port.'
+          : (err as Error).message;
+      bridge.setRelay(undefined, reason);
+      if (lastProblem !== reason) console.error(`portal-mcp: ${reason}`);
+      lastProblem = reason;
+    }
+    schedule();
+  };
+
+  await check();
+  return { close };
 }
 
 /**
- * Retry the bind every TAKEOVER_POLL_MS until it succeeds, then mark this
- * process the owner.
- *
- * Deliberately NOT unref'd. In the degraded path there is no WebSocketServer
- * holding the event loop open, so an unref'd timer lets the process fall out of
- * the loop the moment it finishes answering `initialize` — the MCP host sees
- * "Connection closed" a second after launch. Lifecycle is instead bound to the
- * MCP transport: runServer cancels this on close so the process still exits
- * promptly when the host goes away.
+ * Bind HTTP relay endpoints and the existing extension WebSocket handshake.
+ * An occupied port is an election loss; it never terminates the existing owner.
  */
-function scheduleTakeover(bridge: Bridge, expectedToken: string): void {
-  takeoverTimer = setTimeout(() => {
-    void (async () => {
-      if (await isPortInUse(WS_PORT)) {
-        scheduleTakeover(bridge, expectedToken);
-        return;
-      }
-      const wss = await bindWsServer(bridge, expectedToken);
-      if (wss) {
-        takeoverTimer = undefined;
-        bridge.setOwnsPort(true);
-        console.error('portal-mcp: took over ws://127.0.0.1:9224 from the previous instance.');
-        return;
-      }
-      scheduleTakeover(bridge, expectedToken);
-    })();
-  }, TAKEOVER_POLL_MS);
-}
-
-/**
- * Bind the listener and wire the handshake handlers. Resolves null on a bind
- * failure (EADDRINUSE) so callers can degrade instead of crashing.
- */
-function bindWsServer(bridge: Bridge, expectedToken: string): Promise<WebSocketServer | null> {
+function bindWsServer(bridge: Bridge, expectedToken: string, port: number): Promise<BridgeService | undefined> {
   return new Promise((resolve) => {
     let settled = false;
+    const server = createServer((req, res) => {
+      void handleRelayRequest(bridge, expectedToken, req, res);
+    });
     const wss = new WebSocketServer({
-      port: WS_PORT,
-      host: WS_HOST,
+      server,
       handleProtocols: (offered: Set<string>, _req) => {
         // SUBPROTOCOL SHAPE GATE — not the auth check (handleProtocols returning
         // false produces HTTP 401, not WS close 4401). Real token equality
@@ -223,12 +188,17 @@ function bindWsServer(bridge: Bridge, expectedToken: string): Promise<WebSocketS
       },
     });
 
-    wss.on('listening', () => {
-      // stderr only — stdout stays pure JSON-RPC.
-      console.error(`portal-mcp: WS server listening on ws://${WS_HOST}:${WS_PORT}`);
+    server.on('listening', () => {
       if (!settled) {
         settled = true;
-        resolve(wss);
+        resolve({
+          close: () => {
+            for (const ws of wss.clients) ws.terminate();
+            wss.close();
+            server.close();
+            server.closeAllConnections();
+          },
+        });
       }
     });
 
@@ -261,24 +231,24 @@ function bindWsServer(bridge: Bridge, expectedToken: string): Promise<WebSocketS
         }
       });
 
-      ws.on('close', (code) => console.error(`portal-mcp: WS client disconnected (code=${code})`));
+      ws.on('close', (code) => {
+        clearTimeout(helloTimer);
+        console.error(`portal-mcp: WS client disconnected (code=${code})`);
+      });
       ws.on('error', (err) => console.error(`portal-mcp: WS error: ${err.message}`));
     });
 
-    wss.on('error', (err) => {
-      console.error(`portal-mcp: WS server error: ${err.message}`);
-      // A bind failure arrives here before 'listening'. Resolve null so the
-      // caller degrades to a bridge-less MCP server instead of throwing out of
-      // runServer and killing the process.
+    wss.on('error', () => {
+      /* the HTTP server owns listener errors */
+    });
+    server.on('error', (err: NodeJS.ErrnoException) => {
       if (!settled) {
         settled = true;
-        try {
-          wss.close();
-        } catch {
-          /* never bound */
-        }
-        resolve(null);
+        wss.close();
+        if (err.code !== 'EADDRINUSE') console.error(`portal-mcp: listener error: ${err.message}`);
+        resolve(undefined);
       }
     });
+    server.listen(port, WS_HOST);
   });
 }

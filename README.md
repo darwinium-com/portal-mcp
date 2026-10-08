@@ -37,6 +37,20 @@ Or as a plugin:
 /plugin install portal-mcp@darwinium
 ```
 
+### Codex
+
+Add this to `~/.codex/config.toml` and restart Codex:
+
+```toml
+[mcp_servers.darwinium-portal-mcp]
+command = "npx"
+args = ["-y", "@darwinium/portal-mcp@latest", "serve"]
+```
+
+Requires Node.js 20+. Multiple Codex and Claude sessions can share the bridge;
+update any entries pinned to an older version and restart those clients once.
+All sessions operate on the same connected portal tab.
+
 ### Chrome extension
 
 Both halves are required. Install from the

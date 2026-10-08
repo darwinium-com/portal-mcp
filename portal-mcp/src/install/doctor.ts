@@ -34,6 +34,7 @@ import { spawnSync } from 'node:child_process';
 import { PROTOCOL_VERSION } from '../bridge/wireProtocol.js';
 import { TOKEN_DIR, TOKEN_PATH, EXTENSION_DIR } from '../token/paths.js';
 import { isPortInUse } from '../ws/killProcessOnPort.js';
+import { RelayClient } from '../ws/relay.js';
 import { probeBridgeHandshake } from '../ws/server.js';
 import { selfPath } from './bundlePaths.js';
 import * as winAcl from './winAcl.js';
@@ -345,6 +346,17 @@ async function checkExtensionReachable(): Promise<DoctorCheck> {
 async function checkPortBindable(): Promise<DoctorCheck> {
   const inUse = await isPortInUse(9224);
   if (!inUse) return { id: 'port.9224.bindable', ok: true, detail: 'available' };
+  if (fs.existsSync(TOKEN_PATH)) {
+    const relay = new RelayClient(9224, fs.readFileSync(TOKEN_PATH, 'utf8').trim());
+    try {
+      await relay.refresh();
+      return { id: 'port.9224.bindable', ok: true, detail: 'available through the running shared bridge' };
+    } catch {
+      // An older bridge, another token, or a foreign listener needs attention.
+    } finally {
+      relay.close();
+    }
+  }
   return {
     id: 'port.9224.bindable',
     ok: false,

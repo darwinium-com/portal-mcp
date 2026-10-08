@@ -5,7 +5,7 @@ description: What the Darwinium Portal MCP collects, where your data goes, and w
 
 # Privacy
 
-**Last updated:** 1 September 2026
+**Last updated:** 8 October 2026
 
 The governing privacy policy for all Darwinium products is
 **[darwinium.com/privacy-policy](https://www.darwinium.com/privacy-policy)**. This page adds
@@ -26,7 +26,8 @@ full below.
 
 **Nothing.** The software makes no network connection to any Darwinium server, or to any
 other remote host. The only network destination either component ever opens is
-`ws://127.0.0.1:9224`, a loopback socket on your own machine that cannot leave it.
+`127.0.0.1:9224`: WebSocket for the extension and authenticated HTTP between local
+bridge processes sharing that connection. Both stay on your own machine.
 
 There is no account, no registration, no usage reporting and no error reporting.
 
@@ -65,7 +66,8 @@ is.** Do not ask the assistant about data you are not willing to send to your AI
 No portal data is written to disk by either component, and nothing is retained after the
 process exits.
 
-The pairing token authorises the loopback WebSocket and nothing else. It is not a Darwinium
+The pairing token authorises the local extension connection and communication between
+bridge processes. It is not a Darwinium
 credential, grants no access to any Darwinium system, never appears in
 `claude_desktop_config.json`, and never leaves your machine.
 

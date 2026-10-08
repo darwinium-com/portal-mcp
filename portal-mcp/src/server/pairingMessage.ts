@@ -17,16 +17,15 @@
 
 /**
  * Instruction block embedded in `initialize.instructions` when the extension is
- * not yet connected. Written so the LLM both (a) understands portal tools are
- * unavailable until pairing, and (b) can answer "what's my token / how do I
- * connect?" directly from context without any tool call.
+ * not yet connected. Conditional wording stays valid if the extension connects
+ * after initialization; the token remains available for explicit pairing help.
  */
 export function buildPairingInstructions(token: string): string {
   return [
-    'The Darwinium Portal browser extension is not connected to this MCP server yet.',
-    'Portal tools (get_page_commands, run_page_command, get_context) will not work until the user pairs the extension.',
+    'If a current tool response says the Darwinium Portal extension is not connected, use these pairing steps.',
+    'Check get_page_commands before recommending pairing; the extension may already have reconnected.',
     '',
-    'To connect, the user should:',
+    'To pair when needed, the user should:',
     '  1. Open their Darwinium portal in Chrome (a *.darwinium.com or *.int.darwinium.io tab).',
     '  2. Click the "Darwinium Portal MCP" extension icon in the toolbar.',
     '  3. Paste the pairing token below into the popup and click "Save & Connect".',
@@ -37,42 +36,6 @@ export function buildPairingInstructions(token: string): string {
     'give them this token and these steps. The token is a local secret valid only on',
     '127.0.0.1 — it is safe to show to this user, but must never be sent anywhere else.',
   ].join('\n');
-}
-
-/**
- * Shared body for the "another instance owns the bridge" state.
- *
- * Distinct from the pairing state on purpose: the extension may be perfectly
- * paired, but THIS process lost the race for 127.0.0.1:9224. Handing over a
- * pairing token here would send the user round a loop that cannot succeed —
- * the browser is already talking to the other instance.
- */
-const PEER_INSTANCE_BODY = [
-  'Another copy of the Darwinium Portal bridge is already running on this machine',
-  'and owns the local connection to the browser (127.0.0.1:9224). Only one copy can',
-  'hold it at a time.',
-  '',
-  'Portal tools will not work in THIS session until that copy exits. To fix it:',
-  '  - Use the portal tools from the Claude session that is already connected, OR',
-  '  - Quit the other Claude client (Claude Desktop, or Claude Code in a terminal)',
-  '    and this session will take over the bridge automatically within a few seconds.',
-  '',
-  'Do NOT tell the user to re-pair or paste a pairing token — the extension is not',
-  'the problem here, and pairing again will not resolve it.',
-];
-
-/** `initialize.instructions` variant for the peer-owns-the-bridge state. */
-export function buildPeerInstanceInstructions(): string {
-  return [
-    'The Darwinium Portal MCP server started, but could not claim the browser bridge.',
-    '',
-    ...PEER_INSTANCE_BODY,
-  ].join('\n');
-}
-
-/** Tool-result variant for the peer-owns-the-bridge state. */
-export function buildPeerInstanceMessage(): string {
-  return ['The Darwinium Portal bridge is not available to this session.', '', ...PEER_INSTANCE_BODY].join('\n');
 }
 
 /**

@@ -25,14 +25,13 @@ Nine checks run:
 | `config.desktop.entry` | Claude Desktop is registered — either an `mcpServers` entry or an installed `.mcpb`. |
 | `config.code.marketplace` | Claude Code plugin present. Warn-only; ignore it if you don't use Claude Code. |
 | `extension.reachable` | The extension's WebSocket accepted the token within 5 seconds. |
-| `port.9224.bindable` | `127.0.0.1:9224` is free. |
+| `port.9224.bindable` | The port is free or a compatible shared bridge is available. |
 | `git.token-tree-warning` | Warns if the token file sits inside a git working tree. |
 
 <Callout>
-**Two of these report a cross on a perfectly healthy machine while Claude Desktop is
-running**, because Claude Desktop is itself holding the port and the live server:
-`port.9224.bindable` and `extension.reachable`. Quit Claude Desktop before reading them as
-faults.
+A running bridge is expected when an MCP client is open. Compatible versions share it
+and pass the port check. If the check fails, update and restart older MCP clients, check
+for mismatched pairing tokens, or identify an unrelated listener on the port.
 </Callout>
 
 For a support ticket, attach the structured output:
@@ -57,13 +56,22 @@ know, the server isn't registered: check Claude Desktop's Settings → Extension
 
 ### The tools vanish, or the server "disconnected"
 
-Only one copy can hold the bridge. Quit every other client — including Claude Code in a
-terminal — then quit Claude Desktop fully (**Claude → Quit**, not just closing the window)
-and reopen.
+Current bridge versions support multiple clients at once. Update and restart older copies
+if the error says the running bridge does not support sharing. If the owner just exited,
+allow the surviving bridge and extension to reconnect, then check the page state before
+retrying an interrupted command.
+
+### The assistant repeats an old bridge error, but tool calls work
+
+A successful current tool call means the connection has recovered. Older builds
+included connection errors in startup instructions, which the assistant can retain
+after recovery. Ask it to call `get_page_commands` again and use that result. Update
+the bridge and start a new MCP session to receive the corrected startup guidance.
 
 ### `port 9224 is already in use`
 
-Another instance or an unrelated process holds it:
+Compatible bridge instances share the port automatically. If sharing is unavailable,
+identify whether an older bridge or an unrelated application holds it:
 
 ```bash
 lsof -i :9224                  # macOS / Linux

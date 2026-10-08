@@ -11,30 +11,37 @@
  * `silent` unset, and its token-print line carries a `[SENSITIVE — clear
  * scrollback after copy]` marker.
  *
- * Security: file mode 0o600 + dir mode 0o700; first-launch write uses
- * `fs.openSync(..., 'wx', 0o600)` ('wx' = create exclusive — fails if exists),
- * mitigating the TOCTOU race where mode is silently ignored on existing files.
+ * Security: file mode 0o600 + dir mode 0o700; first-launch writes an exclusive
+ * temporary file and atomically links it into place. Concurrent launches read
+ * the winner, and can never observe a partially written token.
  * All output via `console.error` — stdout stays pure JSON-RPC (the smoke test
  * asserts the first stdout line is JSON-RPC).
  */
 import * as fs from 'node:fs';
 import { randomBytes } from 'node:crypto';
-import { TOKEN_DIR, TOKEN_PATH } from './paths.js';
+import { dirname } from 'node:path';
+import { TOKEN_PATH } from './paths.js';
 
-export function readToken(): string {
-  ensureDir();
-  if (fs.existsSync(TOKEN_PATH)) {
+export function readToken(tokenPath = TOKEN_PATH): string {
+  ensureDir(tokenPath);
+  if (fs.existsSync(tokenPath)) {
     // Existing-token path — SILENT; never re-print the token.
-    return fs.readFileSync(TOKEN_PATH, 'utf8').trim();
+    return fs.readFileSync(tokenPath, 'utf8').trim();
   }
   // First-launch from `serve` standalone path: dev-mode stderr print (with
   // [SENSITIVE] marker). Production install/rotate-token paths use
   // generateAndWrite({silent:true}) directly, never reaching this branch.
-  return generateAndWrite();
+  try {
+    return generateAndWrite({ path: tokenPath });
+  } catch (err) {
+    // Simultaneous first launches must all use the token that won publication.
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+    return fs.readFileSync(tokenPath, 'utf8').trim();
+  }
 }
 
-function ensureDir(): void {
-  fs.mkdirSync(TOKEN_DIR, { recursive: true, mode: 0o700 });
+function ensureDir(tokenPath = TOKEN_PATH): void {
+  fs.mkdirSync(dirname(tokenPath), { recursive: true, mode: 0o700 });
 }
 
 /**
@@ -48,20 +55,28 @@ function ensureDir(): void {
  * `opts.silent !== true` — dev-mode `serve` standalone. Prints the paste hint,
  * with the [SENSITIVE] marker on the raw-token line.
  */
-export function generateAndWrite(opts?: { silent?: boolean }): string {
-  ensureDir();
+export function generateAndWrite(opts?: { silent?: boolean; path?: string }): string {
+  const tokenPath = opts?.path ?? TOKEN_PATH;
+  ensureDir(tokenPath);
   const token = randomBytes(32).toString('hex');
-  // 'wx' = create exclusive — fails if file already exists. Mitigates TOCTOU on perms
-  // (`fs.writeFileSync(..., {mode})` silently ignores mode on existing files).
-  const fd = fs.openSync(TOKEN_PATH, 'wx', 0o600);
+  // Create a private temporary inode before publishing it at the final path.
+  const temporaryPath = `${tokenPath}.${process.pid}.${randomBytes(8).toString('hex')}.tmp`;
+  const fd = fs.openSync(temporaryPath, 'wx', 0o600);
   try {
-    fs.writeSync(fd, token);
+    try {
+      fs.writeFileSync(fd, token);
+    } finally {
+      fs.closeSync(fd);
+    }
+    // Publish a complete file atomically without overwriting another launch's
+    // token. Readers can never observe the empty file between open and write.
+    fs.linkSync(temporaryPath, tokenPath);
   } finally {
-    fs.closeSync(fd);
+    fs.unlinkSync(temporaryPath);
   }
   // Audit-trail line — printed in BOTH silent and non-silent modes so
   // operators can observe token regeneration timing in logs.
-  console.error(`portal-mcp: generated new token at ${TOKEN_PATH}`);
+  console.error(`portal-mcp: generated new token at ${tokenPath}`);
   if (!opts?.silent) {
     // Dev-mode branch — the [SENSITIVE] marker prefixes the raw-token line so
     // dev-machine scrollback carries an explicit "clear after copy" reminder.

@@ -7,7 +7,8 @@
 import { z } from 'zod';
 import type { Bridge } from '../bridge/Context.js';
 import { capContextResponse } from './get-context.js';
-import { buildPairingMessage, buildPeerInstanceMessage } from './pairingMessage.js';
+import { buildPairingMessage } from './pairingMessage.js';
+import { buildPortalInstructions } from './portalInstructions.js';
 
 type ToolCallReq = { params: { name: string; arguments?: Record<string, unknown> } };
 
@@ -93,11 +94,9 @@ export function makeBridgeCallHandler(bridge: Bridge, token: string) {
     const { name, arguments: rawArgs } = req.params;
     const args = (rawArgs ?? {}) as Record<string, unknown>;
 
-    // Another live instance owns the bridge — pairing advice would be actively
-    // misleading here, so say what is really wrong. Checked before hasWs()
-    // because a non-owner can never have a socket.
-    if (!bridge.ownsPort()) {
-      return { content: [{ type: 'text', text: buildPeerInstanceMessage() }], isError: true };
+    const problem = bridge.connectionProblem();
+    if (problem) {
+      return { content: [{ type: 'text', text: problem }], isError: true };
     }
 
     // Not connected → return the pairing token + steps instead of a bare NO_TAB.
@@ -159,7 +158,7 @@ export function makeBridgeCallHandler(bridge: Bridge, token: string) {
           const contextObj = (contextResult ?? {}) as Record<string, unknown>;
           const capped = capContextResponse({
             ...contextObj,
-            instructions: instructionsResult?.instructions ?? '',
+            instructions: buildPortalInstructions(instructionsResult?.instructions ?? ''),
           });
           return { content: [{ type: 'text', text: JSON.stringify(capped, null, 2) }] };
         }

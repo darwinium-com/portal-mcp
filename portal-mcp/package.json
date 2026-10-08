@@ -1,6 +1,6 @@
 {
   "name": "@darwinium/portal-mcp",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Darwinium Portal MCP — local stdio MCP server bridging Claude Desktop / Claude Code to the active *.darwinium.com tab via a Chrome MV3 extension.",
   "author": "Darwinium",
   "license": "Apache-2.0",
@@ -49,7 +49,7 @@
     "package:macos": "node scripts/build-mcpb.mjs --runtime=bun --target=darwin-arm64 --handover",
     "smoke-test": "node --experimental-strip-types scripts/smoke-test.ts",
     "smoke-test:eaddrinuse": "node --experimental-strip-types scripts/smoke-test-eaddrinuse.ts",
-    "test": "npm run build && npm run smoke-test",
+    "test": "npm run build && npm run smoke-test && npm run smoke-test:eaddrinuse",
     "lint": "eslint src/",
     "vendor": "node scripts/vendor-instructions.mjs",
     "vendor:check": "node scripts/vendor-instructions.mjs --check",

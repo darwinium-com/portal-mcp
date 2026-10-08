@@ -3,4 +3,4 @@
 //
 // This is the RELEASE version. For the bridge frame-format version see
 // PROTOCOL_VERSION in src/bridge/wireProtocol.ts — they are independent.
-export const VERSION = '0.0.3';
+export const VERSION = '0.0.4';

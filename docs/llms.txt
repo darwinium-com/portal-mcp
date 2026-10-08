@@ -21,5 +21,5 @@
 
 - Requires Google Chrome 116+ and a logged-in `*.darwinium.com` or `*.int.darwinium.io` tab.
 - Node.js 20+ is needed only for the npx path; the `.mcpb` bundle is a self-contained binary.
-- The server binds `127.0.0.1:9224`; only one MCP host can hold the bridge at a time.
+- MCP hosts share the bridge on `127.0.0.1:9224` automatically. A survivor takes over if the owner exits; all hosts currently use the same connected tab.
 - Source: https://github.com/darwinium-com/portal-mcp

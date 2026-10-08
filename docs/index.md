@@ -56,9 +56,13 @@ does and does not protect.
 - **Node.js 20+** *only* for the `npx` install path. The `.mcpb` bundle runs on the Node
   runtime Claude Desktop ships, so it needs nothing installed.
 
-## One host at a time
+## Multiple assistants at once
 
-The server binds `127.0.0.1:9224`, and only one process can hold it. If you run Claude
-Desktop and Claude Code at once, the second one to start will report that another copy owns
-the bridge, and will take over automatically when the first exits. Use the portal tools from
-one client at a time.
+Each assistant launches its own MCP server. The first owns `127.0.0.1:9224`; later
+processes share its browser connection automatically. If the owner exits, a survivor
+takes over and the extension reconnects. Interrupted calls return an error without
+being replayed.
+
+All assistants currently operate on the same connected portal tab. Navigation or
+edits from one session affect the page seen by the others. Update and restart older
+bridge versions before using concurrent sessions.

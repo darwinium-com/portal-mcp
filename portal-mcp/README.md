@@ -16,6 +16,21 @@ The three tools exposed are:
 - `run_page_command` — invoke a named page command with args
 - `get_context` — return the page's static instructions plus current node context
 
+## Multiple assistant sessions
+
+Run multiple Codex, Claude Code, or Claude Desktop sessions at the same time. The first
+`portal-mcp` process owns the browser connection; later processes automatically forward
+their calls through it using the same per-user pairing token. No extra setup is needed.
+
+Each assistant keeps its own MCP session and receives only its own replies. They all
+operate on the tab connected in the extension, so navigation and edits affect the same
+page. Separate tabs per assistant are not supported yet.
+
+If the first process exits, a surviving process takes over and the extension reconnects.
+Calls interrupted during this handover return an error and are never automatically
+replayed. Allow the connection to recover before deciding whether to retry an operation.
+All running bridge copies must support sharing; update and restart older clients once.
+
 ## Prerequisites
 
 - macOS, Windows, or Linux with **Node.js 20 or newer** (`node --version`)
@@ -112,7 +127,7 @@ You'll see nine checks. All should pass on a healthy install:
 - `config.desktop.entry` — `claude_desktop_config.json.mcpServers["darwinium-portal-mcp"]` exists and is well-formed
 - `config.code.marketplace` — Claude Code plugin install is present at `~/.claude/plugins/...` (warn-only if missing — you may not be using Claude Code)
 - `extension.reachable` — the extension's WebSocket bridge accepts the token within 5 seconds
-- `port.9224.bindable` — `127.0.0.1:9224` is free for the MCP server to bind
+- `port.9224.bindable` — `127.0.0.1:9224` is free or a compatible shared bridge is available
 - `git.token-tree-warning` — token file is **not** inside a git working tree (warn-by-default; move it out or add to `.gitignore` if it is)
 
 For support tickets, attach the structured `--json` output:
@@ -150,7 +165,8 @@ Full policy: **https://www.darwinium.com/privacy-policy**. Summary below.
 
 **Darwinium collects nothing through this tool.** It has no analytics, no telemetry, no
 crash reporting, and no backend of its own. The only network destination either component
-ever opens is `ws://127.0.0.1:9224` — a loopback socket on your own machine.
+ever opens is `127.0.0.1:9224` — WebSocket for the extension and authenticated HTTP
+between bridge processes, all on your own machine.
 
 ### What data is handled, and where it goes
 
@@ -200,7 +216,7 @@ Privacy questions: **privacy@darwinium.com**. Issues:
 - **"Load Unpacked fails on macOS because the path contains spaces"** — copy the extracted extension to a path without spaces, e.g. `cp -r '~/Library/Application Support/darwinium-portal-mcp/extension' ~/darwinium-mcp-extension` and load the latter.
 - **"Pairing code expired"** — press **Enter** at the installer's prompt to re-arm with a fresh code (counter resets).
 - **"`claude_desktop_config.json` is not valid JSON"** — fix the syntax (or delete the file) and re-run `install`. Your previous config is at `claude_desktop_config.json.bak`.
-- **"`port 9224` is already in use"** (`port.9224.bindable` doctor check fails) — another `portal-mcp serve` instance is running, or another tool has bound the port. Quit the other instance, or `lsof -i :9224` (macOS / Linux) / `netstat -ano | findstr :9224` (Windows) to find the offender.
+- **"`port 9224` is already in use"** (`port.9224.bindable` doctor check fails) — compatible bridge instances share the port automatically. Update and restart older MCP clients; for an unrelated listener, use `lsof -i :9224` (macOS / Linux) / `netstat -ano | findstr :9224` (Windows) to identify it. Bridge startup never kills the existing listener.
 
 For more, contact us at **https://www.darwinium.com/contact-us**.
 
