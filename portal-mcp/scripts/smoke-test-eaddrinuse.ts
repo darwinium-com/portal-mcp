@@ -235,7 +235,10 @@ try {
   reconnect = true;
   connectExtension(port, token);
   await until(() => !!currentExtension, 'extension connects');
-  await until(async () => !(await followers[0].call('get_page_commands')).isError, 'followers see extension');
+  await until(
+    async () => (await Promise.all(followers.map((h) => h.call('get_page_commands')))).every((r) => !r.isError),
+    'all followers see extension',
+  );
   const startupConnections = connectionCount;
 
   // Deliberately complete calls out of order, with matching MCP ids across hosts.
@@ -325,12 +328,12 @@ try {
   reconnect = true;
   connectExtension(port, token);
   await until(
-    async () => !(await followers[0].call('get_page_commands')).isError,
-    'extension reconnect reaches followers',
+    async () => (await Promise.all(followers.map((h) => h.call('get_page_commands')))).every((r) => !r.isError),
+    'extension reconnect reaches all followers',
   );
 
-  const abandonedCall = followers[1].call('run_page_command', { name: 'hold' }).catch(() => undefined);
   const abandonedHolds = received.filter((r) => r.args?.name === 'hold').length;
+  const abandonedCall = followers[1].call('run_page_command', { name: 'hold' }).catch(() => undefined);
   await until(
     () => received.filter((r) => r.args?.name === 'hold').length > abandonedHolds,
     'call arrives before subordinate exits',
